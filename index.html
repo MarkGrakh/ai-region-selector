@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>АИС «Отбор ИИ-проектов» | Региональный центр компетенций</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif; }
+        body { background: #eef2f5; min-height: 100vh; }
+        
+        /* Синяя официальная гамма */
+        :root {
+            --primary: #1a4f6e;
+            --primary-dark: #0e3a52;
+            --primary-light: #e3f0f5;
+            --accent: #2c7cb6;
+            --border: #cbdce5;
+            --text-main: #1a2c38;
+            --text-muted: #4a6270;
+            --bg-card: #ffffff;
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            --hover: #eef3f8;
+        }
+        
+        .container { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
+        
+        /* Шапка */
+        .gov-header {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow);
+            border-left: 4px solid var(--accent);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .gov-header h1 { font-size: 1.3rem; color: var(--primary-dark); font-weight: 600; }
+        .gov-header h1 small { font-size: 0.75rem; color: var(--text-muted); font-weight: normal; }
+        .user-info { background: var(--primary-light); padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.85rem; color: var(--primary-dark); }
+        
+        /* Карточки */
+        .card { background: var(--bg-card); border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: var(--shadow); border: 1px solid var(--border); }
+        .stat-card { background: #f7fafc; border-radius: 12px; padding: 1rem; text-align: center; border: 1px solid var(--border); }
+        
+        /* Формы — сетка */
+        .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+        @media (max-width: 768px) { .form-grid { grid-template-columns: 1fr; } }
+        .field { display: flex; flex-direction: column; gap: 0.3rem; }
+        .field label { font-weight: 600; font-size: 0.85rem; color: var(--text-main); }
+        .field .hint { font-size: 0.7rem; color: var(--text-muted); }
+        input, select, textarea { width: 100%; padding: 0.6rem 0.8rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; background: white; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(26, 79, 110, 0.1); }
+        
+        /* Ползунки */
+        .range-group { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+        .range-group input { flex: 1; }
+        .range-value { min-width: 45px; text-align: center; font-weight: 600; color: var(--primary); background: var(--primary-light); padding: 0.2rem 0.5rem; border-radius: 20px; font-size: 0.85rem; }
+        
+        /* Кнопки — контрастные, без картинок */
+        button { background: var(--primary); color: white; border: none; padding: 0.5rem 1.2rem; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.15s; font-size: 0.85rem; }
+        button:hover { background: var(--primary-dark); }
+        button.secondary { background: #e4e9ed; color: var(--text-main); }
+        button.secondary:hover { background: #d0d8e0; }
+        button.danger { background: #b83c2c; }
+        button.danger:hover { background: #962b1d; }
+        button.small { padding: 0.25rem 0.8rem; font-size: 0.75rem; }
+        button.active { background: var(--accent); box-shadow: 0 0 0 2px rgba(44, 124, 182, 0.3); }
+        
+        /* Таблицы */
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th { text-align: left; padding: 0.75rem 0.6rem; background: #f2f6f9; color: var(--primary-dark); font-weight: 600; border-bottom: 2px solid var(--border); }
+        td { padding: 0.75rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        tr:hover { background: var(--hover); }
+        
+        /* Статусы */
+        .status-new { background: #fff3e0; color: #b85c00; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.7rem; font-weight: 600; display: inline-block; }
+        .status-approved { background: #e0f5e8; color: #1f7840; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.7rem; font-weight: 600; }
+        .status-rejected { background: #fde5e5; color: #b33a2c; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.7rem; font-weight: 600; }
+        
+        /* Три точки — без прыжков */
+        .action-cell { position: relative; width: 50px; text-align: center; }
+        .dropdown { position: static; }
+        .dots-btn { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted); padding: 4px 10px; border-radius: 6px; }
+        .dots-btn:hover { background: var(--primary-light); color: var(--primary); }
+        .dropdown-content { display: none; position: absolute; right: 10px; margin-top: 5px; background: white; min-width: 130px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 8px; z-index: 100; border: 1px solid var(--border); overflow: hidden; }
+        .dropdown-content button { width: 100%; text-align: left; background: none; color: var(--text-main); padding: 0.5rem 1rem; border-radius: 0; border-bottom: 1px solid #eee; font-size: 0.8rem; }
+        .dropdown-content button:last-child { border-bottom: none; }
+        .dropdown-content button:hover { background: var(--primary-light); color: var(--primary); }
+        .dropdown:hover .dropdown-content { display: block; }
+        
+        .flex { display: flex; gap: 0.8rem; flex-wrap: wrap; align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; }
+        .toast { position: fixed; bottom: 20px; right: 20px; background: var(--primary-dark); color: white; padding: 10px 20px; border-radius: 8px; z-index: 2000; font-size: 0.85rem; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .login-card { max-width: 450px; margin: 10vh auto; background: white; border-radius: 20px; padding: 2rem; text-align: center; border: 1px solid var(--border); }
+        .role-buttons { display: flex; gap: 0.8rem; justify-content: center; margin: 1.5rem 0; flex-wrap: wrap; }
+        .role-btn { background: #eef2f5; color: var(--text-main); padding: 0.5rem 1.5rem; }
+        .role-btn.active { background: var(--primary); color: white; }
+        .badge { background: var(--primary-light); padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.7rem; color: var(--primary-dark); }
+        .file-link { display: inline-block; margin: 2px 4px; padding: 2px 8px; background: var(--primary-light); border-radius: 20px; font-size: 0.7rem; text-decoration: none; color: var(--primary); }
+        .star { font-size: 1.1rem; cursor: pointer; background: none; padding: 0 4px; color: #b0c4ce; }
+        .star.active { color: #f5a623; }
+        canvas { max-height: 260px; width: 100%; margin-top: 1rem; }
+        .tabs { display: flex; gap: 0.3rem; margin-bottom: 1.2rem; border-bottom: 1px solid var(--border); }
+        .tab-btn { background: none; color: var(--text-muted); border-radius: 8px 8px 0 0; margin-bottom: -1px; }
+        .tab-btn.active { background: var(--bg-card); color: var(--primary); border: 1px solid var(--border); border-bottom-color: white; }
+        @media (max-width: 720px) { .container { padding: 1rem; } th, td { font-size: 0.7rem; } .dots-btn { font-size: 1rem; } }
+    </style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+    // ========== КРИТЕРИИ С ПОДСКАЗКАМИ ==========
+    const criteria = [
+        { name: "Социально-экономический эффект", max: 5, weight: 2.0, hint: "5: >50 млн руб./год или >100 тыс. жителей" },
+        { name: "Масштабируемость", max: 5, weight: 1.6, hint: "5: весь регион, 3: несколько муниципалитетов" },
+        { name: "Чёткость KPI", max: 3, weight: 1.2, hint: "3: конкретные измеримые показатели" },
+        { name: "Технологическая готовность TRL", max: 5, weight: 2.0, vetoLow: 2, hint: "5: TRL 8-9 (промэкспл.), &lt;2 = вето" },
+        { name: "Объяснимость XAI", max: 3, weight: 1.2, hint: "3: модель полностью прозрачна" },
+        { name: "Интеграция с ГИС", max: 3, weight: 1.2, hint: "3: готовая интеграция" },
+        { name: "TCO/окупаемость", max: 5, weight: 1.4, hint: "5: окупаемость &lt;1 года" },
+        { name: "Отечественность", max: 5, weight: 1.2, vetoLow: 2, hint: "5: в реестре Минцифры, &lt;2 = вето" },
+        { name: "Кибербезопасность", max: 3, weight: 1.0, hint: "3: сертифицированная инфраструктура РФ" },
+        { name: "Внешняя поддержка", max: 2, weight: 0.5, hint: "2: Сколково/ФРИИ" }
+    ];
+    const MAX_TOTAL = 55.8;
+    const PASS_THRESHOLD = 28;
+    const spheres = ["Здравоохранение", "Транспорт", "ЖКХ", "Социальная защита", "Образование", "Экология", "Сельское хозяйство", "Промышленность", "Строительство", "Культура и туризм", "Безопасность", "Финансы", "Кадры", "Импортозамещение ПО", "Иное"];
+
+    const STORAGE_PROJECTS = "gov_ai_projects";
+    const STORAGE_EXPERTS = "gov_ai_experts";
+    const STORAGE_FAVS = "gov_ai_favs";
+
+    function computeScores(scoresArr) {
+        let total = 0, veto = false;
+        const details = [];
+        for (let i = 0; i < criteria.length; i++) {
+            const score = scoresArr[i] || 0;
+            const weighted = score * criteria[i].weight;
+            total += weighted;
+            details.push({ name: criteria[i].name, score, weighted: weighted.toFixed(2), weight: criteria[i].weight });
+            if (criteria[i].vetoLow !== undefined && score < criteria[i].vetoLow) veto = true;
+        }
+        return { total: parseFloat(total.toFixed(2)), veto, details };
+    }
+
+    function loadProjects() { return JSON.parse(localStorage.getItem(STORAGE_PROJECTS) || "[]"); }
+    function saveProjects(p) { localStorage.setItem(STORAGE_PROJECTS, JSON.stringify(p)); }
+    function loadExperts() { return JSON.parse(localStorage.getItem(STORAGE_EXPERTS) || '[{"id":"exp1","login":"expert","name":"Экспертная группа","email":"expert@region.gov.ru"}]'); }
+    function saveExperts(e) { localStorage.setItem(STORAGE_EXPERTS, JSON.stringify(e)); }
+    function loadFavs() { return new Set(JSON.parse(localStorage.getItem(STORAGE_FAVS) || "[]")); }
+    function saveFavs(f) { localStorage.setItem(STORAGE_FAVS, JSON.stringify([...f])); }
+
+    function showToast(msg) { let d = document.createElement('div'); d.className = "toast"; d.innerText = msg; document.body.appendChild(d); setTimeout(() => d.remove(), 3000); console.log("[УВЕДОМЛЕНИЕ]", msg); }
+
+    let currentUser = null;
+    let expertCompareIds = [];
+    let expertCurrentTab = 'list';
+    let charts = { line: null, bar: null };
+
+    function renderApp() {
+        const app = document.getElementById('app');
+        if (!currentUser) { app.innerHTML = renderLogin(); attachLoginEvents(); }
+        else if (currentUser.role === 'supplier') { app.innerHTML = renderSupplier(); attachSupplierEvents(); }
+        else if (currentUser.role === 'expert') { app.innerHTML = renderExpert(); attachExpertEvents(); }
+        else if (currentUser.role === 'admin') { app.innerHTML = renderAdmin(); attachAdminEvents(); }
+    }
+
+    // ========== ЛОГИН ==========
+    function renderLogin() {
+        return `<div class="login-card"><h2>АИС «Отбор ИИ-проектов»</h2><p>Региональный центр компетенций</p>
+            <div class="role-buttons" id="roleSelector"><button data-role="supplier" class="role-btn">Поставщик</button><button data-role="expert" class="role-btn">Эксперт</button><button data-role="admin" class="role-btn">Администратор</button></div>
+            <input type="text" id="loginInput" placeholder="Логин" autocomplete="off"><input type="password" id="passwordInput" placeholder="Пароль">
+            <button id="doLoginBtn">Войти</button><p class="badge" style="margin-top:1rem;">demo: supplier / expert / admin</p></div>`;
+    }
+    function attachLoginEvents() {
+        document.querySelectorAll('.role-btn').forEach(btn => { btn.onclick = () => { document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); document.getElementById('loginInput').value = btn.dataset.role; }; });
+        document.getElementById('doLoginBtn').onclick = () => {
+            let login = document.getElementById('loginInput').value.trim();
+            let role = login === 'supplier' ? 'supplier' : (login === 'expert' ? 'expert' : (login === 'admin' ? 'admin' : null));
+            if (!role) { showToast("Используйте логин: supplier, expert, admin"); return; }
+            currentUser = { role, login, name: role === 'supplier' ? 'Поставщик' : (role === 'expert' ? 'Эксперт' : 'Администратор') };
+            renderApp();
+        };
+    }
+
+    // ========== ПОСТАВЩИК (с ползунками, подсказками, методикой) ==========
+    function renderSupplier() {
+        let projects = loadProjects(), myProjects = projects.filter(p => p.supplierLogin === 'supplier');
+        let criteriaHtml = criteria.map((c, i) => `
+            <div class="field">
+                <label>${c.name} (${c.max} баллов)</label>
+                <div class="hint">${c.hint || ''} • вес ×${c.weight}</div>
+                <div class="range-group">
+                    <input type="range" min="0" max="${c.max}" step="1" id="crit_${i}" value="0" oninput="document.getElementById('crit_val_${i}').innerText = this.value">
+                    <span class="range-value" id="crit_val_${i}">0</span>
+                </div>
+            </div>`).join('');
+        return `<div class="container"><div class="gov-header"><div><h1>Оценка ИИ-проектов <small>региональный отбор</small></h1></div><div class="user-info">Поставщик | <button id="logoutBtn" class="small secondary">Выйти</button></div></div>
+            <div class="card"><h3 style="margin-bottom:1rem;">Новая заявка</h3><form id="projectForm">
+                <div class="form-grid"><div class="field"><label>Название проекта *</label><input id="projName" required></div><div class="field"><label>Организация *</label><input id="orgName" required></div>
+                <div class="field"><label>Сфера деятельности</label><select id="sphereSelect">${spheres.map(s=>`<option>${s}</option>`).join('')}</select></div><div class="field"><label>Ссылки на файлы</label><input id="link1" placeholder="Ссылка 1"><input id="link2" placeholder="Ссылка 2" style="margin-top:0.3rem;"><input id="link3" placeholder="Ссылка 3" style="margin-top:0.3rem;"></div>
+                <div class="field full-width" style="grid-column:1/-1;"><label>Описание проекта</label><textarea id="desc" rows="2" placeholder="Краткое описание, целевая аудитория, ожидаемые результаты..."></textarea></div></div>
+                <div style="background:#f7fafc; padding:1rem; border-radius:12px; margin:1rem 0;"><h4>Критерии самооценки</h4><div class="form-grid" style="grid-template-columns:repeat(2,1fr);">${criteriaHtml}</div></div>
+                <button type="submit">Отправить заявку</button></form></div>
+            <div class="card"><h3>Мои заявки</h3><table><thead><tr><th>Название</th><th>Сфера</th><th>Балл</th><th>Статус</th><th>Вето</th></tr></thead><tbody>${myProjects.map(p => `<tr><td>${p.name}</td><td>${p.sphere}</td><td><b>${p.totalScore}</b></td><td><span class="status-${p.status==='Новая'?'new':(p.status==='Одобрена'?'approved':'rejected')}">${p.status}</span></td><td>${p.veto ? '⚠️' : ''}</td></tr>`).join('')}</tbody></table></div></div>`;
+    }
+    function attachSupplierEvents() {
+        document.getElementById('projectForm').onsubmit = (e) => {
+            e.preventDefault();
+            let name = document.getElementById('projName').value.trim(), org = document.getElementById('orgName').value.trim();
+            if (!name || !org) { showToast("Заполните название и организацию"); return; }
+            let sphere = document.getElementById('sphereSelect').value, desc = document.getElementById('desc').value;
+            let links = [document.getElementById('link1').value, document.getElementById('link2').value, document.getElementById('link3').value].filter(l => l);
+            let scores = criteria.map((c, i) => Math.min(c.max, Math.max(0, parseInt(document.getElementById(`crit_${i}`).value) || 0)));
+            let { total, veto, details } = computeScores(scores);
+            let newProj = { id: Date.now(), name, organization: org, sphere, description: desc, fileLinks: links, scores, totalScore: total, veto, scoreDetails: details, status: "Новая", supplierLogin: 'supplier', supplierName: 'Поставщик', createdAt: new Date().toISOString() };
+            let projects = loadProjects(); projects.push(newProj); saveProjects(projects);
+            showToast(`Заявка "${name}" принята. Балл: ${total}`);
+            renderApp();
+        };
+        document.getElementById('logoutBtn').onclick = () => { currentUser = null; renderApp(); };
+    }
+
+    // ========== ЭКСПЕРТ ==========
+    function renderExpert() {
+        let projects = loadProjects(), favs = loadFavs();
+        let filterSphere = document.getElementById('expFilterSphere')?.value || 'all', filterStatus = document.getElementById('expFilterStatus')?.value || 'all', searchText = document.getElementById('expSearch')?.value.toLowerCase() || '', favOnly = document.getElementById('expFavOnly')?.checked || false;
+        let filtered = projects.filter(p => (filterSphere === 'all' || p.sphere === filterSphere) && (filterStatus === 'all' || p.status === filterStatus) && (!searchText || p.name.toLowerCase().includes(searchText) || p.organization.toLowerCase().includes(searchText)) && (!favOnly || favs.has(p.id))).sort((a,b) => b.totalScore - a.totalScore);
+        let content = '';
+        if (expertCurrentTab === 'list') content = renderExpertTable(filtered, favs);
+        else if (expertCurrentTab === 'statistics') { content = renderExpertStats(projects); setTimeout(() => drawCharts(projects), 100); }
+        else if (expertCurrentTab === 'compare') content = renderComparePanel(projects);
+        else if (expertCurrentTab === 'methodology') content = renderMethodology();
+        return `<div class="container"><div class="gov-header"><div><h1>Аналитика ИИ-проектов <small>экспертная панель</small></h1></div><div class="user-info">Эксперт | <button id="logoutBtn" class="small secondary">Выйти</button></div></div>
+            <div class="tabs"><button data-tab="list" class="tab-btn ${expertCurrentTab==='list'?'active':''}">Реестр</button><button data-tab="statistics" class="tab-btn ${expertCurrentTab==='statistics'?'active':''}">Аналитика</button><button data-tab="compare" class="tab-btn ${expertCurrentTab==='compare'?'active':''}">Сравнение</button><button data-tab="methodology" class="tab-btn ${expertCurrentTab==='methodology'?'active':''}">Методика</button></div>
+            ${expertCurrentTab==='list' ? `<div class="card flex"><input id="expSearch" placeholder="Поиск..." style="width:200px;"><select id="expFilterSphere"><option value="all">Все сферы</option>${spheres.map(s=>`<option>${s}</option>`).join('')}</select><select id="expFilterStatus"><option value="all">Все статусы</option><option>Новая</option><option>Одобрена</option><option>Отклонена</option></select><label><input type="checkbox" id="expFavOnly"> Избранное</label><button id="exportCSVBtn" class="secondary small">CSV</button><button id="deleteAllBtn" class="danger small">Удалить всё</button></div>` : ''}
+            <div id="expertContent">${content}</div></div>`;
+    }
+    
+    function renderExpertTable(projects, favs) {
+        return `<div style="overflow-x:auto;"><table><thead><tr><th>⭐</th><th>Сравн.</th><th>Проект</th><th>Поставщик</th><th>Сфера</th><th>Балл</th><th>Детали</th><th>Файлы</th><th>Статус</th><th style="width:50px;"></th></tr></thead><tbody>${projects.map(p => {
+            let isFav = favs.has(p.id);
+            let detailsShort = p.scoreDetails?.slice(0,2).map(d=>`${d.name}:${d.score}`).join(', ') + (p.scoreDetails?.length>2?'…':'');
+            return `<tr><td><button class="star ${isFav ? 'active' : ''}" data-id="${p.id}">${isFav ? '★' : '☆'}</button></td>
+            <td><input type="checkbox" class="compare-cb" value="${p.id}" ${expertCompareIds.includes(p.id) ? 'checked' : ''} ${expertCompareIds.length>=3 && !expertCompareIds.includes(p.id) ? 'disabled' : ''}></td>
+            <td><strong>${p.name}</strong><br><span class="badge">${p.organization}</span></td>
+            <td>${p.supplierName}</td><td>${p.sphere}</td>
+            <td><b>${p.totalScore}</b> ${p.veto ? '⚠️' : ''}<br><button class="pdf-btn small secondary" data-id="${p.id}">PDF</button></td>
+            <td><small>${detailsShort}</small><br><button class="details-btn small secondary" data-id="${p.id}">подробнее</button></td>
+            <td>${(p.fileLinks||[]).slice(0,2).map(l=>`<a href="${l}" target="_blank" class="file-link">📎</a>`).join('')}</td>
+            <td><span class="status-${p.status==='Новая'?'new':(p.status==='Одобрена'?'approved':'rejected')}">${p.status}</span></td>
+            <td class="action-cell"><div class="dropdown"><button class="dots-btn">⋯</button><div class="dropdown-content"><button class="approve-btn" data-id="${p.id}">Одобрить</button><button class="reject-btn" data-id="${p.id}">Отклонить</button><button class="delete-btn" data-id="${p.id}">Удалить</button><button class="comment-btn" data-id="${p.id}">Комментарий</button></div></div></td>
+            </tr>`;
+        }).join('')}</tbody></table><div class="flex" style="margin-top:1rem;"><button id="compareBtn" class="secondary small">Сравнить выбранные (${expertCompareIds.length}/3)</button></div></div>`;
+    }
+    
+    function renderExpertStats(projects) {
+        let total = projects.length, avg = total ? (projects.reduce((a,b)=>a+b.totalScore,0)/total).toFixed(1) : 0, vetoCount = projects.filter(p=>p.veto).length;
+        let weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate()-7); let weekCount = projects.filter(p=>new Date(p.createdAt) > weekAgo).length;
+        let top3 = [...projects].sort((a,b)=>b.totalScore - a.totalScore).slice(0,3);
+        let sphereAvg = {}; spheres.forEach(s=>{let arr=projects.filter(p=>p.sphere===s); sphereAvg[s]=arr.length?(arr.reduce((a,b)=>a+b.totalScore,0)/arr.length).toFixed(1):0;});
+        return `<div class="stats-grid"><div class="stat-card"><div style="font-size:1.2rem; font-weight:600;">${total}</div><div>всего заявок</div></div>
+        <div class="stat-card"><div style="font-size:1.2rem; font-weight:600;">${avg}</div><div>средний балл</div></div>
+        <div class="stat-card"><div style="font-size:1.2rem; font-weight:600;">${vetoCount}</div><div>с вето</div></div>
+        <div class="stat-card"><div style="font-size:1.2rem; font-weight:600;">${weekCount}</div><div>за неделю</div></div>
+        <div class="stat-card"><div style="font-weight:600;">Топ-3</div>${top3.map((p,i)=>`${i+1}. ${p.name}<br><small>${p.totalScore} б.</small>`).join('')}</div>
+        <div class="stat-card"><div style="font-weight:600;">Средний по сферам</div>${Object.entries(sphereAvg).slice(0,5).map(([k,v])=>`${k}: ${v}`).join('<br>')}</div></div>
+        <div class="card"><canvas id="lineChart"></canvas><canvas id="barChart" style="margin-top:20px;"></canvas></div>`;
+    }
+    
+    function drawCharts(projects) {
+        let ctxLine = document.getElementById('lineChart')?.getContext('2d'), ctxBar = document.getElementById('barChart')?.getContext('2d');
+        if(ctxLine){ let sorted=[...projects].sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt)); let dates=sorted.map(p=>new Date(p.createdAt).toLocaleDateString()), cum=sorted.map((_,i)=>i+1); if(charts.line) charts.line.destroy(); charts.line=new Chart(ctxLine,{type:'line',data:{labels:dates,datasets:[{label:'Накопление заявок',data:cum,borderColor:'#1a4f6e',fill:false}]}}); }
+        if(ctxBar){ let counts=spheres.map(s=>projects.filter(p=>p.sphere===s).length); if(charts.bar) charts.bar.destroy(); charts.bar=new Chart(ctxBar,{type:'bar',data:{labels:spheres,datasets:[{label:'Проектов',data:counts,backgroundColor:'#4a90b0'}]}}); }
+    }
+    
+    function renderComparePanel(projects) {
+        let selected = projects.filter(p=>expertCompareIds.includes(p.id));
+        return `<div class="card"><h3>Сравнение проектов (${selected.length}/3)</h3><div class="grid-2">${selected.map(p=>`<div class="stat-card"><strong>${p.name}</strong><br>Балл: ${p.totalScore}<br>Вето: ${p.veto?'Да':'Нет'}<br><small>${p.scoreDetails?.map(d=>`${d.name}:${d.score}`).join(', ')}</small><br><button class="pdf-btn small" data-id="${p.id}">PDF отчёт</button></div>`).join('')}</div></div>`;
+    }
+    
+    function renderMethodology() {
+        return `<div class="card"><h3>Методика оценки</h3><p><strong>Формула:</strong> Σ (балл × вес)</p><p><strong>Максимум:</strong> ${MAX_TOTAL} | <strong>Порог отбора:</strong> ≥ ${PASS_THRESHOLD}</p><p><strong>Автовето:</strong> TRL &lt;2 ИЛИ Отечественность &lt;2</p><p><strong>Критерии:</strong></p><ul>${criteria.map(c=>`<li>${c.name}: вес ×${c.weight}, макс. ${c.max} баллов — ${c.hint || ''}</li>`).join('')}</ul></div>`;
+    }
+    
+    function attachExpertEvents() {
+        document.querySelectorAll('.tab-btn').forEach(btn=>{btn.onclick=()=>{expertCurrentTab=btn.dataset.tab; renderApp();};});
+        document.getElementById('expSearch')?.addEventListener('input',()=>renderApp());
+        document.getElementById('expFilterSphere')?.addEventListener('change',()=>renderApp());
+        document.getElementById('expFilterStatus')?.addEventListener('change',()=>renderApp());
+        document.getElementById('expFavOnly')?.addEventListener('change',()=>renderApp());
+        document.getElementById('exportCSVBtn')?.addEventListener('click',()=>{
+            let projs = loadProjects();
+            let csvRows = [["ID","Название","Организация","Сфера","Балл","Статус","Дата"]];
+            projs.forEach(p=>csvRows.push([p.id,p.name,p.organization,p.sphere,p.totalScore,p.status,new Date(p.createdAt).toLocaleDateString()]));
+            let csv = csvRows.map(row=>row.map(cell=>`"${String(cell).replace(/"/g,'""')}"`).join(",")).join("\n");
+            let blob = new Blob(["\uFEFF" + csv], {type:"text/csv;charset=utf-8;"});
+            let link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `ai_projects_${new Date().toISOString().slice(0,10)}.csv`; link.click(); URL.revokeObjectURL(link.href);
+            showToast("CSV-отчёт сформирован");
+        });
+        document.getElementById('deleteAllBtn')?.addEventListener('click',()=>{if(confirm("Удалить ВСЕ проекты?")){saveProjects([]);renderApp();}});
+        document.getElementById('compareBtn')?.addEventListener('click',()=>{expertCurrentTab='compare';renderApp();});
+        document.querySelectorAll('.star').forEach(btn=>{btn.onclick=()=>{let favs=loadFavs(),id=Number(btn.dataset.id);if(favs.has(id))favs.delete(id);else favs.add(id);saveFavs(favs);renderApp();};});
+        document.querySelectorAll('.compare-cb').forEach(cb=>{cb.onchange=()=>{let id=Number(cb.value);if(cb.checked && !expertCompareIds.includes(id) && expertCompareIds.length<3) expertCompareIds.push(id);else if(!cb.checked) expertCompareIds=expertCompareIds.filter(i=>i!==id);renderApp();};});
+        document.querySelectorAll('.approve-btn').forEach(btn=>{btn.onclick=()=>changeStatus(Number(btn.dataset.id),"Одобрена");});
+        document.querySelectorAll('.reject-btn').forEach(btn=>{btn.onclick=()=>changeStatus(Number(btn.dataset.id),"Отклонена");});
+        document.querySelectorAll('.delete-btn').forEach(btn=>{btn.onclick=()=>{let projs=loadProjects().filter(p=>p.id!==Number(btn.dataset.id));saveProjects(projs);showToast("Проект удалён");renderApp();};});
+        document.querySelectorAll('.comment-btn').forEach(btn=>{btn.onclick=()=>{let msg=prompt("Комментарий для поставщика:");if(msg) showToast(`Комментарий: ${msg}`);};});
+        document.querySelectorAll('.pdf-btn').forEach(btn=>{btn.onclick=async()=>{
+            const {jsPDF}=window.jspdf;
+            const p=loadProjects().find(pr=>pr.id===Number(btn.dataset.id));
+            if(p && jsPDF){
+                const doc=new jsPDF();
+                doc.setFontSize(16); doc.text("АИС «Отбор ИИ-проектов»",20,15);
+                doc.setFontSize(12); doc.text(`Отчёт по проекту: ${p.name}`,20,30);
+                doc.text(`Организация: ${p.organization}`,20,40);
+                doc.text(`Сфера: ${p.sphere}`,20,50);
+                doc.text(`Итоговый балл: ${p.totalScore} / ${MAX_TOTAL}`,20,60);
+                doc.text(`Статус: ${p.status}`,20,70);
+                if(p.veto) doc.text("Автоматическое вето",20,80);
+                doc.text("Детализация баллов:",20,90);
+                let y=100;
+                p.scoreDetails?.forEach(d=>{doc.text(`${d.name}: ${d.score} баллов × ${d.weight} = ${d.weighted}`,20,y); y+=7;});
+                doc.text(`Описание: ${p.description||"—"}`,20,y+5);
+                doc.text(`Ссылки: ${(p.fileLinks||[]).join(", ")||"—"}`,20,y+13);
+                doc.save(`${p.name.replace(/[^a-zа-я0-9]/gi,'_')}_report.pdf`);
+                showToast(`PDF "${p.name}" сохранён`);
+            }
+        };});
+        document.querySelectorAll('.details-btn').forEach(btn=>{btn.onclick=()=>{let p=loadProjects().find(pr=>pr.id===Number(btn.dataset.id));alert(`Проект: ${p.name}\n\nОписание: ${p.description || "—"}\n\nДетали баллов:\n${p.scoreDetails?.map(d=>`${d.name}: ${d.score} (взв. ${d.weighted})`).join("\n")}`);};});
+        document.getElementById('logoutBtn').onclick = () => { currentUser = null; renderApp(); };
+    }
+    
+    function changeStatus(id, newStatus) {
+        let projects = loadProjects();
+        let idx = projects.findIndex(p => p.id === id);
+        if (idx !== -1) { projects[idx].status = newStatus; saveProjects(projects); showToast(`Статус изменён на "${newStatus}"`); renderApp(); }
+    }
+
+    // ========== АДМИНИСТРАТОР (с возможностью менять статус) ==========
+    function renderAdmin() {
+        let projects = loadProjects(), experts = loadExperts();
+        return `<div class="container"><div class="gov-header"><div><h1>АИС «Отбор ИИ-проектов» <small>администрирование</small></h1></div><div class="user-info">Администратор | <button id="logoutBtn" class="small secondary">Выйти</button></div></div>
+            <div class="card"><h3>Управление экспертами</h3><div class="flex"><input id="newExpertLogin" placeholder="Логин"><input id="newExpertName" placeholder="Имя"><input id="newExpertEmail" placeholder="Email"><button id="addExpertBtn">Добавить</button></div><div>${experts.map(e=>`<div class="flex justify-between" style="margin-top:0.8rem;"><span><b>${e.login}</b> — ${e.name} (${e.email})</span><button class="del-expert small danger" data-id="${e.id}">Удалить</button></div>`).join('')}</div></div>
+            <div class="card"><h3>Реестр проектов</h3><div style="overflow-x:auto;"><table><thead><tr><th>Название</th><th>Поставщик</th><th>Сфера</th><th>Балл</th><th>Статус</th><th>Действия</th><th>Дата</th></tr></thead><tbody>${projects.map(p=>`<tr><td><strong>${p.name}</strong><br><span class="badge">${p.organization}</span></td><td>${p.supplierName}</td><td>${p.sphere}</td><td><b>${p.totalScore}</b> ${p.veto?'⚠️':''}</td><td><span class="status-${p.status==='Новая'?'new':(p.status==='Одобрена'?'approved':'rejected')}">${p.status}</span></td>
+            <td><div class="flex" style="gap:0.3rem;"><button class="small approve-admin" data-id="${p.id}">Одобрить</button><button class="small danger reject-admin" data-id="${p.id}">Отклонить</button><button class="small secondary delete-admin" data-id="${p.id}">Удалить</button></div></td>
+            <td>${new Date(p.createdAt).toLocaleDateString()}</td></tr>`).join('')}</tbody></table></div></div></div>`;
+    }
+    
+    function attachAdminEvents() {
+        document.getElementById('addExpertBtn')?.addEventListener('click', () => {
+            let login = document.getElementById('newExpertLogin').value.trim(), name = document.getElementById('newExpertName').value.trim(), email = document.getElementById('newExpertEmail').value.trim();
+            if (login && name) { let experts = loadExperts(); experts.push({ id: Date.now(), login, name, email }); saveExperts(experts); showToast(`Эксперт ${login} добавлен`); renderApp(); }
+        });
+        document.querySelectorAll('.del-expert').forEach(btn => { btn.onclick = () => { let experts = loadExperts().filter(e => e.id != btn.dataset.id); saveExperts(experts); renderApp(); }; });
+        document.querySelectorAll('.approve-admin').forEach(btn => { btn.onclick = () => changeStatus(Number(btn.dataset.id), "Одобрена"); });
+        document.querySelectorAll('.reject-admin').forEach(btn => { btn.onclick = () => changeStatus(Number(btn.dataset.id), "Отклонена"); });
+        document.querySelectorAll('.delete-admin').forEach(btn => { btn.onclick = () => { let projs = loadProjects().filter(p => p.id !== Number(btn.dataset.id)); saveProjects(projs); showToast("Проект удалён"); renderApp(); }; });
+        document.getElementById('logoutBtn').onclick = () => { currentUser = null; renderApp(); };
+    }
+    
+    renderApp();
+</script>
+</body>
+</html>
